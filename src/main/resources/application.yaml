@@ -4,18 +4,37 @@ spring:
   #  autoconfigure:
   #    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
   datasource:
-    url: jdbc:postgresql://localhost:5433/securecapita
+    url: jdbc:mysql://localhost:3306/securecapita
     password: letmein
-    username: postgres
+    username: root
   jpa:
+    database-platform: org.hibernate.dialect.MySQL8InnoDBDialect
+    generate-ddl: true
+    show-sql: true
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        globally_quoted_indentifiers: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
-    show-sql: true
   sql:
     init:
       mode: never
       continue-on-error: false
+#  datasource:
+#    url: jdbc:postgresql://localhost:5433/securecapita
+#    password: letmein
+#    username: postgres
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    properties:
+#      hibernate:
+#        dialect: org.hibernate.dialect.PostgreSQLDialect
+#        format_sql: true
+#    show-sql: true
+#  sql:
+#    init:
+#      mode: never
+#      continue-on-error: false
