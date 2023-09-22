@@ -2,8 +2,11 @@ package io.korner.securecapita.resource;
 
 import io.korner.securecapita.domain.HttpResponse;
 import io.korner.securecapita.domain.User;
+import io.korner.securecapita.domain.UserPrincipal;
 import io.korner.securecapita.dto.UserDTO;
 import io.korner.securecapita.form.LoginForm;
+import io.korner.securecapita.provider.TokenProvider;
+import io.korner.securecapita.service.RoleService;
 import io.korner.securecapita.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,7 +29,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserResource {
     private final UserService userService;
+    private final RoleService roleService;
     private final AuthenticationManager authenticationManager;
+    private final TokenProvider tokenProvider;
 
     @PostMapping("/register")
     public ResponseEntity<HttpResponse> saveUser(@RequestBody @Valid User user){
@@ -47,26 +52,21 @@ public class UserResource {
         UserDTO user = userService.getUserByEmail(loginForm.getEmail());
         
         return user.isUsingMfa() ? sendVerificationCode(user) : sendResponse(user);
-        // For only test purpose
-        /*return ResponseEntity.ok().body(
-                HttpResponse.builder()
-                        .timeStamp(LocalDateTime.now().toString())
-                        .data(Map.of("user", user))
-                        .message("Login success")
-                        .status(HttpStatus.OK)
-                        .statusCode(HttpStatus.OK.value())
-                        .build());*/
     }
 
     private ResponseEntity<HttpResponse> sendResponse(UserDTO user) {
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
-                        .data(Map.of("user", user))
+                        .data(Map.of("user", user, "access_token", tokenProvider.createAccessToken(getUserPrinciple(user)), "refresh_token", tokenProvider.createRefreshToken(getUserPrinciple(user))))
                         .message("Login success")
                         .status(HttpStatus.OK)
                         .statusCode(HttpStatus.OK.value())
                         .build());
+    }
+
+    private UserPrincipal getUserPrinciple(UserDTO user) {
+        return new UserPrincipal(userService.getUser(user.getEmail()), roleService.getRoleByUserId(user.getId()).getPermission());
     }
 
     //TODO: handle Twilio exception
