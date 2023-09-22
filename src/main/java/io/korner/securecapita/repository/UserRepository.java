@@ -1,6 +1,7 @@
 package io.korner.securecapita.repository;
 
 import io.korner.securecapita.domain.User;
+import io.korner.securecapita.dto.UserDTO;
 
 import java.util.Collection;
 
@@ -13,6 +14,8 @@ public interface UserRepository <T extends User> {
     Boolean delete(Long id);
 
     T getUserByEmail(String email);
+
+    void sendVerificationCode(UserDTO user);
 
     /* More Complex Operations */
 }

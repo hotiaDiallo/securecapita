@@ -3,12 +3,17 @@ package io.korner.securecapita.repository.implementation;
 import io.korner.securecapita.domain.Role;
 import io.korner.securecapita.domain.User;
 import io.korner.securecapita.domain.UserPrincipal;
+import io.korner.securecapita.dto.UserDTO;
 import io.korner.securecapita.exceptions.ApiException;
 import io.korner.securecapita.repository.RoleRepository;
 import io.korner.securecapita.repository.UserRepository;
 import io.korner.securecapita.rowmapper.UserRowMapper;
+import io.korner.securecapita.utils.SmsUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.time.DateFormatUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -22,6 +27,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,6 +42,7 @@ import static java.util.Objects.requireNonNull;
 @RequiredArgsConstructor
 @Slf4j
 public class UserRepositoryImpl implements UserRepository<User>, UserDetailsService {
+    private static final String DATE_FORMAT = "yyyy-MM-dd hh:mm:ss";
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final RoleRepository<Role> roleRepository;
     private final BCryptPasswordEncoder encoder;
@@ -114,6 +121,20 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         }catch (EmptyResultDataAccessException exception) {
             log.error(exception.getMessage());
             throw new ApiException("No user found by email: "+ email);
+        } catch (Exception exception) {
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
+    }
+
+    @Override
+    public void sendVerificationCode(UserDTO user) {
+        String expirationDate = DateFormatUtils.format(DateUtils.addDays(new Date(), 1), DATE_FORMAT);
+        String verificationCode = RandomStringUtils.randomAlphabetic(8).toUpperCase();
+        try {
+            jdbcTemplate.update(DELETE_VERIFICATION_CODE_BY_USER_ID_QUERY, Map.of("userId", user.getId()));
+            jdbcTemplate.update(INSERT_VERIFICATION_CODE_QUERY, Map.of("userId", user.getId(), "code", verificationCode, "expirationDate", expirationDate));
+            SmsUtils.sendSMS(user.getPhone(), "From: SecureCapita\nVerification code\n" +verificationCode);
         } catch (Exception exception) {
             log.error(exception.getMessage());
             throw new ApiException("An error occurred. Please try again.");
