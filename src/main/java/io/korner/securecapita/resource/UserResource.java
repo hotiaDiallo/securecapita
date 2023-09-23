@@ -4,22 +4,20 @@ import io.korner.securecapita.domain.HttpResponse;
 import io.korner.securecapita.domain.User;
 import io.korner.securecapita.domain.UserPrincipal;
 import io.korner.securecapita.dto.UserDTO;
+import io.korner.securecapita.dtomapper.UserDTOMapper;
 import io.korner.securecapita.form.LoginForm;
 import io.korner.securecapita.provider.TokenProvider;
 import io.korner.securecapita.service.RoleService;
 import io.korner.securecapita.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -34,7 +32,7 @@ public class UserResource {
     private final TokenProvider tokenProvider;
 
     @PostMapping("/register")
-    public ResponseEntity<HttpResponse> saveUser(@RequestBody @Valid User user){
+    public ResponseEntity<HttpResponse> register(@RequestBody @Valid User user){
         UserDTO userDTO = userService.createUser(user);
         return ResponseEntity.created(getUri()).body(
                 HttpResponse.builder()
@@ -54,6 +52,12 @@ public class UserResource {
         return user.isUsingMfa() ? sendVerificationCode(user) : sendResponse(user);
     }
 
+    @GetMapping("/verify/code/{email}/{code}")
+    public ResponseEntity<HttpResponse> verifyCode(@PathVariable String email, @PathVariable String code){
+        UserDTO user = userService.verifyCode(email, code);
+        return sendResponse(user);
+    }
+
     private ResponseEntity<HttpResponse> sendResponse(UserDTO user) {
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
@@ -66,7 +70,7 @@ public class UserResource {
     }
 
     private UserPrincipal getUserPrinciple(UserDTO user) {
-        return new UserPrincipal(userService.getUser(user.getEmail()), roleService.getRoleByUserId(user.getId()).getPermission());
+        return new UserPrincipal(UserDTOMapper.toUser(userService.getUserByEmail(user.getEmail())), roleService.getRoleByUserId(user.getId()).getPermission());
     }
 
     //TODO: handle Twilio exception

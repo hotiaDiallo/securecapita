@@ -8,7 +8,6 @@ import io.korner.securecapita.exceptions.ApiException;
 import io.korner.securecapita.repository.RoleRepository;
 import io.korner.securecapita.repository.UserRepository;
 import io.korner.securecapita.rowmapper.UserRowMapper;
-import io.korner.securecapita.utils.SmsUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -31,10 +30,10 @@ import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
-
 import static io.korner.securecapita.contants.Constants.EMAIL_ALREADY_USE_MESSAGE;
 import static io.korner.securecapita.enumerations.RoleType.ROLE_USER;
 import static io.korner.securecapita.enumerations.VerificationType.ACCOUNT;
+import static io.korner.securecapita.query.TwoFactorVerificationsQuery.SELECT_CODE_EXPIRATION_QUERY;
 import static io.korner.securecapita.query.UserQuery.*;
 import static java.util.Objects.requireNonNull;
 
@@ -86,23 +85,6 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         return null;
     }
 
-    private SqlParameterSource getSqlParameterSource(User user) {
-        return new MapSqlParameterSource()
-                .addValue("firstName", user.getFirstName())
-                .addValue("lastName", user.getLastName())
-                .addValue("email", user.getEmail())
-                .addValue("password", encoder.encode(user.getPassword()));
-    }
-
-    private Integer getEmailCount(String email) {
-        return jdbcTemplate.queryForObject(COUNT_USER_EMAIL_QUERY, Map.of("email", email), Integer.class);
-    }
-    private String getVerificationUrl(String key, String type){
-        return ServletUriComponentsBuilder
-                .fromCurrentRequest().path("/user/verify/" + type + "/" + key)
-                .toUriString();
-    }
-
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = getUserByEmail(email);
@@ -134,10 +116,57 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         try {
             jdbcTemplate.update(DELETE_VERIFICATION_CODE_BY_USER_ID_QUERY, Map.of("userId", user.getId()));
             jdbcTemplate.update(INSERT_VERIFICATION_CODE_QUERY, Map.of("userId", user.getId(), "code", verificationCode, "expirationDate", expirationDate));
-            SmsUtils.sendSMS(user.getPhone(), "From: SecureCapita\nVerification code\n" +verificationCode);
+            log.info("Verification code: {}", verificationCode);
+            //SmsUtils.sendSMS(user.getPhone(), "From: SecureCapita\nVerification code\n" +verificationCode);
         } catch (Exception exception) {
             log.error(exception.getMessage());
             throw new ApiException("An error occurred. Please try again.");
         }
+    }
+
+    @Override
+    public User verifyCode(String email, String code) {
+        try {
+            if(isVerificatonCodeExpired(code))
+                throw new ApiException("This code has expired. Please login again.");
+            User userByEmail = jdbcTemplate.queryForObject(SELECT_USER_BY_EMAIL_QUERY, Map.of("email", email), new UserRowMapper());
+            User userByCode = jdbcTemplate.queryForObject(SELECT_USER_BY_USER_CODE_QUERY, Map.of("code", code), new UserRowMapper());
+            if (userByCode == null || !userByCode.getEmail().equalsIgnoreCase(userByEmail.getEmail()))
+                throw new ApiException("Code is invalid. Please try again");
+            jdbcTemplate.update(DELETE_CODE_QUERY, Map.of("code", code));
+            return userByCode;
+        }catch (EmptyResultDataAccessException exception){
+            throw new ApiException("Could not find record");
+        }catch (Exception exception){
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurs. Please try again.");
+        }
+    }
+
+    private boolean isVerificatonCodeExpired(String code) {
+        try {
+            return Boolean.TRUE.equals(jdbcTemplate.queryForObject(SELECT_CODE_EXPIRATION_QUERY, Map.of("code", code), Boolean.class));
+        }catch (EmptyResultDataAccessException exception){
+            throw new ApiException("This code is not valid");
+        }catch (Exception exception){
+            throw new ApiException("An error occurs. Please try again.");
+        }
+    }
+
+    private SqlParameterSource getSqlParameterSource(User user) {
+        return new MapSqlParameterSource()
+                .addValue("firstName", user.getFirstName())
+                .addValue("lastName", user.getLastName())
+                .addValue("email", user.getEmail())
+                .addValue("password", encoder.encode(user.getPassword()));
+    }
+
+    private Integer getEmailCount(String email) {
+        return jdbcTemplate.queryForObject(COUNT_USER_EMAIL_QUERY, Map.of("email", email), Integer.class);
+    }
+    private String getVerificationUrl(String key, String type){
+        return ServletUriComponentsBuilder
+                .fromCurrentRequest().path("/user/verify/" + type + "/" + key)
+                .toUriString();
     }
 }
