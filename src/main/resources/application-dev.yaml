@@ -1,5 +1,12 @@
 jwt:
   secret: mysecret
+
+server:
+  error:
+    path: /user/error
+    whitelabel:
+      enabled: false
+
 spring:
   #  autoconfigure:
   #    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration

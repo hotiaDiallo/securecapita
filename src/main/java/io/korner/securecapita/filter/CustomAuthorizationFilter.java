@@ -1,6 +1,7 @@
 package io.korner.securecapita.filter;
 
 import io.korner.securecapita.provider.TokenProvider;
+import io.korner.securecapita.utils.ExceptionUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -64,6 +65,7 @@ public class CustomAuthorizationFilter extends OncePerRequestFilter {
     }
 
     private void processError(HttpServletRequest request, HttpServletResponse response, Exception exception) {
+        ExceptionUtils.processError(request, response, exception);
     }
 
     private String getToken(HttpServletRequest request) {

@@ -9,6 +9,7 @@ import io.korner.securecapita.form.LoginForm;
 import io.korner.securecapita.provider.TokenProvider;
 import io.korner.securecapita.service.RoleService;
 import io.korner.securecapita.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Map;
+
+import static java.time.LocalTime.now;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @RestController
 @RequestMapping(path = "/user")
@@ -69,6 +73,17 @@ public class UserResource {
                         .message("Profile retrieved")
                         .status(HttpStatus.OK)
                         .statusCode(HttpStatus.OK.value())
+                        .build());
+    }
+
+    @RequestMapping("/error")
+    public ResponseEntity<HttpResponse> handleError(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .reason("There is no mapping for a " + request.getMethod() + " request for this path on the server")
+                        .status(BAD_REQUEST)
+                        .statusCode(BAD_REQUEST.value())
                         .build());
     }
 
