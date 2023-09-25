@@ -88,7 +88,7 @@ public class TokenProvider {
                 .withArrayClaim(AUTHORITIES, claims);
     }
 
-    private List<GrantedAuthority> getAuthorities(String token){
+    public List<GrantedAuthority> getAuthorities(String token){
         String[] claims = getClaimsFromToken(token);
         return Arrays.stream(claims).map(SimpleGrantedAuthority::new).collect(Collectors.toList());
     }
