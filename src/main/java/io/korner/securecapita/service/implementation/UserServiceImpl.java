@@ -18,7 +18,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDTO createUser(User user) {
-        return mapToUserDTO(user);
+        return mapToUserDTO(userRepository.create(user));
     }
 
     @Override

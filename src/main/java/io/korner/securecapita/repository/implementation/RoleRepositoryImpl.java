@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 
 import static io.korner.securecapita.enumerations.RoleType.ROLE_USER;
 import static io.korner.securecapita.query.RoleQuery.*;
@@ -49,7 +50,7 @@ public class RoleRepositoryImpl implements RoleRepository<Role> {
         log.info("Adding role {} to user id: {}", roleName, userId);
         try {
             Role role = jdbcTemplate.queryForObject(SELECT_ROLE_BY_NAME_QUERY, Map.of("roleName", roleName), new RoleRowMapper());
-            jdbcTemplate.update(INSERT_ROLE_TO_USER_QUERY, Map.of("userId", userId, "roleId", role.getId()));
+            jdbcTemplate.update(INSERT_ROLE_TO_USER_QUERY, Map.of("userId", userId, "roleId", Objects.requireNonNull(role).getId()));
         }catch (EmptyResultDataAccessException exception){
             throw new ApiException("No role found by name: " + ROLE_USER.name());
         } catch (Exception exception) {

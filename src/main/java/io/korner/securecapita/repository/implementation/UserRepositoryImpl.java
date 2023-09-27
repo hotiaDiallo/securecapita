@@ -48,12 +48,12 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
 
     @Override
     public User create(User user) {
-        if(getEmailCount(user.getEmail().trim().toLowerCase()) > 0)
+        if(emailAlreadyExists(user.getEmail()))
             throw new ApiException(EMAIL_ALREADY_USE_MESSAGE);
         try {
             GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
-            SqlParameterSource parameters = getSqlParameterSource(user);
-            jdbcTemplate.update(INSERT_USER_QUERY, parameters, keyHolder);
+            SqlParameterSource sqlParameterSource = getSqlParameterSource(user);
+            jdbcTemplate.update(INSERT_USER_QUERY, sqlParameterSource, keyHolder);
             user.setId(requireNonNull(keyHolder.getKey()).longValue());
             roleRepository.addRoleToUser(user.getId(), ROLE_USER.name());
 
@@ -62,7 +62,7 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
 
             //emailService.sendVerificationUrl(user.getFirstName(), user.getEmail(), verificationUrl, ACCOUNT);
 
-            user.setEnabled(false);
+            user.setEnabled(true);
             user.setNotLocked(true);
             return user;
         } catch (Exception exception) {
@@ -93,7 +93,7 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
             throw new UsernameNotFoundException("User not found in the database");
         }
         log.info("User found in the database: {}", email);
-        return new UserPrincipal(user, roleRepository.getRoleByUserId(user.getId()).getPermission());
+        return new UserPrincipal(user, roleRepository.getRoleByUserId(user.getId()));
     }
 
     @Override
@@ -141,6 +141,10 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
             log.error(exception.getMessage());
             throw new ApiException("An error occurs. Please try again.");
         }
+    }
+
+    private boolean emailAlreadyExists(String email) {
+        return getEmailCount(email.trim().toLowerCase()) > 0;
     }
 
     private boolean isVerificatonCodeExpired(String code) {

@@ -1,5 +1,7 @@
 package io.korner.securecapita.domain;
 
+import io.korner.securecapita.dto.UserDTO;
+import io.korner.securecapita.dtomapper.UserDTOMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -12,11 +14,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserPrincipal implements UserDetails {
     private final User user;
-    private final String permissions; // USER:READ,CUSTOMER:READ
+    private final Role role;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Arrays.stream(permissions.split(",".trim()))
+        return Arrays.stream(role.getPermission().split(",".trim()))
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
     }
@@ -49,5 +51,9 @@ public class UserPrincipal implements UserDetails {
     @Override
     public boolean isEnabled() {
         return user.isEnabled();
+    }
+
+    public UserDTO getUser(){
+        return UserDTOMapper.fromUser(user, role);
     }
 }
