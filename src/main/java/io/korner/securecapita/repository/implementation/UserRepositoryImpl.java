@@ -33,6 +33,7 @@ import java.util.UUID;
 import static io.korner.securecapita.contants.Constants.EMAIL_ALREADY_USE_MESSAGE;
 import static io.korner.securecapita.enumerations.RoleType.ROLE_USER;
 import static io.korner.securecapita.enumerations.VerificationType.ACCOUNT;
+import static io.korner.securecapita.enumerations.VerificationType.PASSWORD;
 import static io.korner.securecapita.query.TwoFactorVerificationsQuery.SELECT_CODE_EXPIRATION_QUERY;
 import static io.korner.securecapita.query.UserQuery.*;
 import static java.util.Objects.requireNonNull;
@@ -139,6 +140,23 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
             throw new ApiException("Could not find record");
         }catch (Exception exception){
             log.error(exception.getMessage());
+            throw new ApiException("An error occurs. Please try again.");
+        }
+    }
+
+    @Override
+    public void resetPassword(String email) {
+        if(!emailAlreadyExists(email))
+            throw new ApiException("There is no account for this email address");
+        try {
+            String expirationDate = DateFormatUtils.format(DateUtils.addDays(new Date(), 1), DATE_FORMAT);
+            User user = getUserByEmail(email);
+            String verificationUrl = getVerificationUrl(UUID.randomUUID().toString(), PASSWORD.getType());
+            jdbcTemplate.update(DELETE_PASSWORD_VERIFICATION_BY_USER_ID_QUERY, Map.of("userId", user.getId()));
+            jdbcTemplate.update(INSERT_PASSWORD_VERIFICATION_QUERY, Map.of("userId", user.getId(), "url", verificationUrl, "expirationDate", expirationDate));
+            // TODO send email with url to user
+            log.info("Verification URL: {}", verificationUrl);
+        }catch (Exception exception){
             throw new ApiException("An error occurs. Please try again.");
         }
     }
