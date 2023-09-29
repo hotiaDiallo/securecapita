@@ -11,4 +11,7 @@ public class UserQuery {
     public static final String DELETE_CODE_QUERY = "DELETE FROM TwoFactorVerifications tfv WHERE tfv.code = :code";
     public static final String DELETE_PASSWORD_VERIFICATION_BY_USER_ID_QUERY = "DELETE FROM ResetPasswordVerifications WHERE user_id = :userId";
     public static final String INSERT_PASSWORD_VERIFICATION_QUERY = "INSERT INTO ResetPasswordVerifications (user_id, url, expiration_date) VALUES (:userId, :url, :expirationDate)";
+    public static final String SELECT_EXPIRATION_BY_URL_QUERY = "SELECT expiration_date < NOW() AS is_expired FROM ResetPasswordVerifications WHERE url = :url";;
+    public static final String SELECT_USER_BY_PASSWORD_URL_QUERY = "SELECT * FROM Users where id = (SELECT user_id FROM ResetPasswordVerifications WHERE url = :url)";
+    public static final String DELETE_USER_FROM_PASSWORD_VERIFICATION_QUERY = "";
 }

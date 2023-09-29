@@ -4,6 +4,7 @@ import io.korner.securecapita.domain.Role;
 import io.korner.securecapita.domain.User;
 import io.korner.securecapita.domain.UserPrincipal;
 import io.korner.securecapita.dto.UserDTO;
+import io.korner.securecapita.enumerations.VerificationType;
 import io.korner.securecapita.exceptions.ApiException;
 import io.korner.securecapita.repository.RoleRepository;
 import io.korner.securecapita.repository.UserRepository;
@@ -161,6 +162,35 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         }
     }
 
+    @Override
+    public User verifyPasswordKey(String key) {
+        if(isLinkExpired(key, PASSWORD))
+            throw new ApiException("This link has expired. Please reset your password again.");
+        try {
+            User user = jdbcTemplate.queryForObject(SELECT_USER_BY_PASSWORD_URL_QUERY, Map.of("url", getVerificationUrl(key, PASSWORD.getType())), new UserRowMapper());
+            //jdbcTemplate.update(DELETE_USER_FROM_PASSWORD_VERIFICATION_QUERY, Map.of("userId", user.getId())); // Depends on the business or use case
+            return user;
+        }catch (EmptyResultDataAccessException exception){
+            log.error(exception.getMessage());
+            throw new ApiException("This link is not valid. Please reset your password again");
+        }catch (Exception exception){
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurs. Please try again.");
+        }
+    }
+
+    private boolean isLinkExpired(String key, VerificationType verificationType) {
+        try {
+            return Boolean.TRUE.equals(jdbcTemplate.queryForObject(SELECT_EXPIRATION_BY_URL_QUERY, Map.of("url", getVerificationUrl(key, verificationType.getType())), Boolean.class));
+        }catch (EmptyResultDataAccessException exception){
+            log.error(exception.getMessage());
+            throw new ApiException("This link is not valid. Please reset your password again");
+        }catch (Exception exception){
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurs. Please try again.");
+        }
+    }
+
     private boolean emailAlreadyExists(String email) {
         return getEmailCount(email.trim().toLowerCase()) > 0;
     }
@@ -188,7 +218,7 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
     }
     private String getVerificationUrl(String key, String type){
         return ServletUriComponentsBuilder
-                .fromCurrentRequest().path("/user/verify/" + type + "/" + key)
+                .fromCurrentContextPath().path("/user/verify/" + type + "/" + key)
                 .toUriString();
     }
 }
