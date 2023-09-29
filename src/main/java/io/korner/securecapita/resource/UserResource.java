@@ -29,6 +29,7 @@ import java.util.Map;
 
 import static java.time.LocalTime.now;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @RestController
 @RequestMapping(path = "/user")
@@ -122,8 +123,31 @@ public class UserResource {
 
     // END - To reset password when the user is not logged in
 
+    @GetMapping("/verify/account/{key}")
+    public ResponseEntity<HttpResponse> verifyAccount(@PathVariable String key){
+        UserDTO user = userService.verifyAccountKey(key);
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(LocalDateTime.now().toString())
+                        .message(user.isEnabled() ? "Account already verified." : "Account verified.")
+                        .status(HttpStatus.OK)
+                        .statusCode(HttpStatus.OK.value())
+                        .build());
+    }
+
     @RequestMapping("/error")
     public ResponseEntity<HttpResponse> handleError(HttpServletRequest request) {
+        return new ResponseEntity<>(
+                HttpResponse.builder()
+                        .timeStamp(now().toString())
+                        .reason("There is no mapping for a " + request.getMethod() + " request for this path "+ request.getRequestURI())
+                        .status(NOT_FOUND)
+                        .statusCode(NOT_FOUND.value())
+                        .build(), NOT_FOUND);
+    }
+
+    /*@RequestMapping("/error")
+    public ResponseEntity<HttpResponse> handleErrorV2(HttpServletRequest request) {
         return ResponseEntity.badRequest().body(
                 HttpResponse.builder()
                         .timeStamp(now().toString())
@@ -131,7 +155,7 @@ public class UserResource {
                         .status(BAD_REQUEST)
                         .statusCode(BAD_REQUEST.value())
                         .build());
-    }
+    }*/
 
     private ResponseEntity<HttpResponse> sendResponse(UserDTO user) {
         return ResponseEntity.ok().body(

@@ -180,6 +180,21 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
     }
 
     @Override
+    public User verifyAccountKey(String key) {
+        try {
+            User user = jdbcTemplate.queryForObject(SELECT_USER_BY_ACCOUNT_URL_QUERY, Map.of("url", getVerificationUrl(key, ACCOUNT.getType())), new UserRowMapper());
+            jdbcTemplate.update(UPDATE_USER_ENABLED_QUERY, Map.of("enabled", true, "id", user.getId()));
+            return user;
+        }catch (EmptyResultDataAccessException exception){
+            log.error(exception.getMessage());
+            throw new ApiException("This link is not valid. Please reset your password again");
+        }catch (Exception exception){
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurs. Please try again.");
+        }
+    }
+
+    @Override
     public void renewPassword(String key, String password, String confirmPassword) {
         if(!password.equals(confirmPassword))
             throw new ApiException("Passwords do not match. Please try again.");
