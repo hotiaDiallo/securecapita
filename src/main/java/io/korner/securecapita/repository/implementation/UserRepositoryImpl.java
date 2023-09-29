@@ -179,6 +179,20 @@ public class UserRepositoryImpl implements UserRepository<User>, UserDetailsServ
         }
     }
 
+    @Override
+    public void renewPassword(String key, String password, String confirmPassword) {
+        if(!password.equals(confirmPassword))
+            throw new ApiException("Passwords do not match. Please try again.");
+        try {
+            String verificationUrl = getVerificationUrl(key, PASSWORD.getType());
+            jdbcTemplate.update(UPDATE_USER_PASSWORD_BY_URL_QUERY, Map.of("password", encoder.encode(password), "url", verificationUrl));
+            jdbcTemplate.update(DELETE_VERIFICATION_BY_URL_QUERY, Map.of( "url", verificationUrl));
+        }catch (Exception exception){
+            log.error(exception.getMessage());
+            throw new ApiException("An error occurs. Please try again.");
+        }
+    }
+
     private boolean isLinkExpired(String key, VerificationType verificationType) {
         try {
             return Boolean.TRUE.equals(jdbcTemplate.queryForObject(SELECT_EXPIRATION_BY_URL_QUERY, Map.of("url", getVerificationUrl(key, verificationType.getType())), Boolean.class));

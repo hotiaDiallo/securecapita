@@ -81,6 +81,8 @@ public class UserResource {
                         .build());
     }
 
+    // START - To reset password when the user is not logged in
+
     @GetMapping("/reset-password/{email}")
     public ResponseEntity<HttpResponse> resetPassword(@PathVariable String email){
         userService.resetPassword(email);
@@ -105,6 +107,20 @@ public class UserResource {
                         .statusCode(HttpStatus.OK.value())
                         .build());
     }
+
+    @PostMapping("/reset-password/{key}/{password}/{confirmPassword}")
+    public ResponseEntity<HttpResponse> renewPassword(@PathVariable String key, @PathVariable String password, @PathVariable String confirmPassword){
+        userService.renewPassword(key, password, confirmPassword);
+        return ResponseEntity.ok().body(
+                HttpResponse.builder()
+                        .timeStamp(LocalDateTime.now().toString())
+                        .message("Password reset successfully.")
+                        .status(HttpStatus.OK)
+                        .statusCode(HttpStatus.OK.value())
+                        .build());
+    }
+
+    // END - To reset password when the user is not logged in
 
     @RequestMapping("/error")
     public ResponseEntity<HttpResponse> handleError(HttpServletRequest request) {
