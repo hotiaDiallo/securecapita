@@ -15,7 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,8 +28,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import static java.time.LocalTime.now;
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.*;
 
 @RestController
 @RequestMapping(path = "/user")
@@ -43,6 +42,8 @@ public class UserResource {
     private final HttpServletRequest request;
     private final HttpServletResponse response;
 
+    private static final String TOKEN_PREFIX = "Bearer ";
+
     @PostMapping("/register")
     public ResponseEntity<HttpResponse> register(@RequestBody @Valid User user){
         UserDTO userDTO = userService.createUser(user);
@@ -51,8 +52,8 @@ public class UserResource {
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", userDTO))
                         .message("User created")
-                        .status(HttpStatus.CREATED)
-                        .statusCode(HttpStatus.CREATED.value())
+                        .status(CREATED)
+                        .statusCode(CREATED.value())
                         .build());
     }
 
@@ -77,8 +78,8 @@ public class UserResource {
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user))
                         .message("Profile retrieved")
-                        .status(HttpStatus.OK)
-                        .statusCode(HttpStatus.OK.value())
+                        .status(OK)
+                        .statusCode(OK.value())
                         .build());
     }
 
@@ -91,8 +92,8 @@ public class UserResource {
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .message("Email sent. Please check your email to reset your password")
-                        .status(HttpStatus.OK)
-                        .statusCode(HttpStatus.OK.value())
+                        .status(OK)
+                        .statusCode(OK.value())
                         .build());
     }
 
@@ -104,8 +105,8 @@ public class UserResource {
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user))
                         .message("Please enter a new password.")
-                        .status(HttpStatus.OK)
-                        .statusCode(HttpStatus.OK.value())
+                        .status(OK)
+                        .statusCode(OK.value())
                         .build());
     }
 
@@ -116,8 +117,8 @@ public class UserResource {
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .message("Password reset successfully.")
-                        .status(HttpStatus.OK)
-                        .statusCode(HttpStatus.OK.value())
+                        .status(OK)
+                        .statusCode(OK.value())
                         .build());
     }
 
@@ -130,8 +131,32 @@ public class UserResource {
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .message(user.isEnabled() ? "Account already verified." : "Account verified.")
-                        .status(HttpStatus.OK)
-                        .statusCode(HttpStatus.OK.value())
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
+    @GetMapping("/refresh/token")
+    public ResponseEntity<HttpResponse> refreshToken(HttpServletRequest request){
+        if(isHeaderTokenValid(request)){
+            String token = request.getHeader(HttpHeaders.AUTHORIZATION).substring(TOKEN_PREFIX.length());
+            UserDTO user = userService.getUserByEmail(tokenProvider.getSubject(token, request));
+            return ResponseEntity.ok().body(
+                    HttpResponse.builder()
+                            .timeStamp(LocalDateTime.now().toString())
+                            .message("Token refreshed.")
+                            .data(Map.of("user", user, "access_token", tokenProvider.createAccessToken(getUserPrinciple(user)), "refresh_token", token))
+                            .status(OK)
+                            .statusCode(OK.value())
+                            .build());
+        }
+        return ResponseEntity.badRequest().body(
+                HttpResponse.builder()
+                        .timeStamp(LocalDateTime.now().toString())
+                        .reason("Refresh token missing or invalid")
+                        .developerMessage("Refresh token missing or invalid")
+                        .status(BAD_REQUEST)
+                        .statusCode(BAD_REQUEST.value())
                         .build());
     }
 
@@ -156,16 +181,25 @@ public class UserResource {
                         .statusCode(BAD_REQUEST.value())
                         .build());
     }*/
-
     private ResponseEntity<HttpResponse> sendResponse(UserDTO user) {
         return ResponseEntity.ok().body(
                 HttpResponse.builder()
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user, "access_token", tokenProvider.createAccessToken(getUserPrinciple(user)), "refresh_token", tokenProvider.createRefreshToken(getUserPrinciple(user))))
                         .message("Login success")
-                        .status(HttpStatus.OK)
-                        .statusCode(HttpStatus.OK.value())
+                        .status(OK)
+                        .statusCode(OK.value())
                         .build());
+    }
+
+    private boolean isHeaderTokenValid(HttpServletRequest request) {
+        String requestHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        return requestHeader != null
+                && requestHeader.startsWith(TOKEN_PREFIX)
+                && tokenProvider.isValidToken(
+                        tokenProvider.getSubject(requestHeader.substring(TOKEN_PREFIX.length()), request),
+                        requestHeader.substring(TOKEN_PREFIX.length())
+                );
     }
 
     private UserPrincipal getUserPrinciple(UserDTO user) {
@@ -195,8 +229,8 @@ public class UserResource {
                         .timeStamp(LocalDateTime.now().toString())
                         .data(Map.of("user", user))
                         .message("Verification code sent")
-                        .status(HttpStatus.OK)
-                        .statusCode(HttpStatus.OK.value())
+                        .status(OK)
+                        .statusCode(OK.value())
                         .build());
     }
 
