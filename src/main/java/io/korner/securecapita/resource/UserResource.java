@@ -5,6 +5,7 @@ import io.korner.securecapita.domain.User;
 import io.korner.securecapita.domain.UserPrincipal;
 import io.korner.securecapita.dto.UserDTO;
 import io.korner.securecapita.dtomapper.UserDTOMapper;
+import io.korner.securecapita.exceptions.ApiException;
 import io.korner.securecapita.form.LoginForm;
 import io.korner.securecapita.provider.TokenProvider;
 import io.korner.securecapita.service.RoleService;
@@ -217,10 +218,8 @@ public class UserResource {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
             return authentication;
         }catch (Exception exception){
-            ExceptionUtils.processError(request, response, exception);
-            log.error(exception.getMessage());
+            throw new ApiException(exception.getMessage());
         }
-        return null;
     }
     private ResponseEntity<HttpResponse> sendVerificationCode(UserDTO user) {
         userService.sendVerificationCode(user);
